@@ -1,0 +1,330 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>PRei File Manager</title>
+
+<!-- DM Sans -->
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+
+<!-- Material Icons -->
+<link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+
+<style>
+:root {
+  --bg: #0a0a0a;
+  --card: #121212;
+  --border: #1f1f1f;
+  --text: #ffffff;
+  --muted: #9a9a9a;
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+  -webkit-tap-highlight-color: transparent;
+}
+
+body {
+  font-family: "DM Sans", system-ui, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  transition: background 0.3s ease, color 0.3s ease;
+}
+
+/* NAVBAR */
+.navbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px;
+  border-bottom: 1px solid var(--border);
+}
+
+.title {
+  font-weight: 600;
+  font-size: 16px;
+}
+
+.btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: white;
+  color: black;
+  border: none;
+  padding: 8px 12px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: opacity 0.2s ease;
+}
+
+.btn:hover {
+  opacity: 0.8;
+}
+
+/* FILE LIST */
+.container {
+  padding: 10px;
+}
+
+.file {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px;
+  border-radius: 10px;
+  cursor: pointer;
+  opacity: 0;
+  transform: translateY(6px);
+  animation: fadeIn 0.25s ease forwards;
+}
+
+.file:hover {
+  background: var(--card);
+}
+
+.file .icon {
+  font-size: 26px;
+  color: var(--muted);
+}
+
+.file .name {
+  flex: 1;
+  font-size: 14px;
+}
+
+.file .size {
+  font-size: 12px;
+  color: var(--muted);
+}
+
+/* MODAL */
+.modal {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.6);
+  display: flex;
+  justify-content: center;
+  align-items: flex-end;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s ease;
+}
+
+.modal.active {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.modal-content {
+  width: 100%;
+  background: var(--card);
+  border-top-left-radius: 16px;
+  border-top-right-radius: 16px;
+  padding: 16px;
+  transform: translateY(20px);
+  transition: transform 0.25s ease;
+}
+
+.modal.active .modal-content {
+  transform: translateY(0);
+}
+
+.modal-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 14px;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: background 0.2s ease;
+}
+
+.modal-item:hover {
+  background: var(--border);
+}
+
+.input {
+  width: 100%;
+  margin-top: 10px;
+  padding: 10px;
+  background: black;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: white;
+  font-family: inherit;
+}
+
+/* ANIMATION */
+@keyframes fadeIn {
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+</style>
+</head>
+
+<body>
+
+<!-- NAVBAR -->
+<div class="navbar">
+  <div class="title">PRei Storage</div>
+  <button class="btn" onclick="upload()">
+    <span class="material-icons">upload</span>
+    Upload
+  </button>
+</div>
+
+<!-- FILE LIST -->
+<div class="container" id="fileList"></div>
+
+<!-- MODAL -->
+<div class="modal" id="modal" onclick="closeModal(event)">
+  <div class="modal-content" onclick="event.stopPropagation()">
+
+    <div class="modal-item" onclick="deleteFile()">
+      <span class="material-icons">delete</span>
+      Delete
+    </div>
+
+    <div class="modal-item" style="flex-direction: column; align-items: flex-start;">
+      <div style="display:flex; gap:10px; align-items:center;">
+        <span class="material-icons">edit</span>
+        Rename
+      </div>
+      <input class="input" id="renameInput" placeholder="New name..." />
+    </div>
+
+    <div class="modal-item" onclick="downloadFile()">
+      <span class="material-icons">download</span>
+      Download
+    </div>
+
+  </div>
+</div>
+
+<input type="file" id="fileInput" hidden />
+
+<script type="module">
+import { createStorage } from "./prei.js";
+
+const p0 = await createStorage();
+const bucket = "files";
+
+await p0.createBucket(bucket).catch(()=>{});
+
+let selected = null;
+
+const fileList = document.getElementById("fileList");
+const modal = document.getElementById("modal");
+const renameInput = document.getElementById("renameInput");
+
+// Load
+async function load() {
+  const list = await p0.listObjects(bucket);
+  fileList.innerHTML = "";
+
+  list.forEach(file => {
+    const el = document.createElement("div");
+    el.className = "file";
+
+    el.innerHTML = `
+      <span class="material-icons icon">${getIcon(file.key)}</span>
+      <div class="name">${file.key}</div>
+      <div class="size">${formatSize(file.size)}</div>
+    `;
+
+    el.onclick = () => openModal(file);
+    fileList.appendChild(el);
+  });
+}
+
+// Icon
+function getIcon(name) {
+  if (name.endsWith(".png") || name.endsWith(".jpg")) return "image";
+  if (name.endsWith(".pdf")) return "picture_as_pdf";
+  if (name.endsWith(".txt")) return "description";
+  return "insert_drive_file";
+}
+
+// Size
+function formatSize(bytes) {
+  if (bytes < 1024) return bytes + "B";
+  if (bytes < 1024*1024) return (bytes/1024).toFixed(1)+"KB";
+  return (bytes/1024/1024).toFixed(1)+"MB";
+}
+
+// Upload
+window.upload = () => {
+  const input = document.getElementById("fileInput");
+  input.click();
+
+  input.onchange = async () => {
+    const file = input.files[0];
+    if (!file) return;
+
+    await p0.putObject({
+      bucket,
+      key: file.name,
+      body: file
+    });
+
+    load();
+  };
+};
+
+// Modal
+function openModal(file) {
+  selected = file;
+  renameInput.value = file.key;
+  modal.classList.add("active");
+}
+
+window.closeModal = () => {
+  modal.classList.remove("active");
+};
+
+// Delete
+window.deleteFile = async () => {
+  await p0.deleteObject(bucket, selected.key);
+  modal.classList.remove("active");
+  load();
+};
+
+// Rename
+renameInput.addEventListener("change", async () => {
+  const newKey = renameInput.value;
+
+  await p0.copyObject({
+    from: { bucket, key: selected.key },
+    to: { bucket, key: newKey }
+  });
+
+  await p0.deleteObject(bucket, selected.key);
+
+  selected.key = newKey;
+  load();
+});
+
+// Download
+window.downloadFile = async () => {
+  const obj = await p0.getObject(bucket, selected.key);
+  const url = URL.createObjectURL(obj.body);
+
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = selected.key;
+  a.click();
+
+  URL.revokeObjectURL(url);
+};
+
+load();
+</script>
+
+</body>
+</html>
