@@ -1,282 +1,90 @@
-PRei Storage (P0)
+# 📦 PRei Storage (P0)
 
-"version" (https://img.shields.io/badge/version-0.1.0-black)
-"status" (https://img.shields.io/badge/status-experimental-white)
-"platform" (https://img.shields.io/badge/platform-browser-black)
-"storage" (https://img.shields.io/badge/storage-IndexedDB-white)
-"api" (https://img.shields.io/badge/API-S3--like-black)
-"license" (https://img.shields.io/badge/license-MIT-white)
+![version](https://img.shields.io/badge/version-0.1.0-black)
+![status](https://img.shields.io/badge/status-experimental-white)
+![platform](https://img.shields.io/badge/platform-browser-black)
+![storage](https://img.shields.io/badge/storage-IndexedDB-white)
+![api](https://img.shields.io/badge/API-S3--like-black)
+![license](https://img.shields.io/badge/license-MIT-white)
 
-PRei Storage (P0) is an S3-like object storage system for the browser, powered by IndexedDB.
+**PRei Storage (P0)** is an S3-inspired object storage system built for the browser, powered by **IndexedDB**. It brings a familiar cloud storage mental model to local-first and offline-ready applications.
 
-Built for:
-
-- local-first applications
-- offline-ready storage
-- client-side encrypted objects
-- experimenting with modern storage layers in the browser
-
----
-
-Core Concept
-
-User Call → API Layer → Middleware → Driver → Transform → Return
-
-- API Layer → S3-like interface
-- Middleware → encryption, transformation
-- Driver → IndexedDB
-- Transform → normalization / serialization
+### 🎯 Built For
+* **Local-First Applications**: Prioritize client-side data ownership.
+* **Offline Resilience**: Seamless storage without an active internet connection.
+* **Secure Objects**: Native client-side encryption for sensitive data.
+* **Modern Experimentation**: Exploring efficient storage layers within browser constraints.
 
 ---
 
-Features
+## 🛠️ Core Concept
+P0 follows a modular pipeline to ensure high performance and low overhead:
+> **User Call** → **API Layer** → **Middleware** → **Driver** → **Transform** → **Return**
 
-- Bucket & Object system (S3-inspired)
-- Supports Blob, ArrayBuffer, Uint8Array, and String
-- Built-in encryption (AES-GCM via Web Crypto)
-- Prefix-based listing
-- Metadata support
-- Object URL generation
-- Structured error system
+* **API Layer**: Provides the S3-like interface.
+* **Middleware**: Handles encryption and transformations.
+* **Driver**: Manages the underlying IndexedDB connection.
+* **Transform**: Performs data normalization and serialization.
 
 ---
 
-Installation
+## ✨ Features
+* **Bucket & Object System**: Familiar S3-style hierarchy (Buckets and Keys).
+* **Multi-Format Support**: Works with `Blob`, `ArrayBuffer`, `Uint8Array`, and `String`.
+* **Built-in Security**: AES-GCM encryption via the Web Crypto API.
+* **Advanced Listing**: Supports prefix-based object discovery.
+* **Smart Utilities**: Metadata support and Object URL generation for UI elements.
+* **Structured Errors**: Consistent error handling using the custom `P0Error` class.
 
-Copy src/prei.js then use directly as a module:
+---
 
+## 🚀 Installation & Usage
+
+### Setup
+Copy `src/prei.js` into your project and import it directly as a module:
+
+```javascript
 import { createStorage } from "./prei.js";
 
----
-
 Quick Start
-
+Initialize the storage and perform basic CRUD operations:
 const p0 = await createStorage();
 
+// Create a bucket
 await p0.createBucket("files");
 
+// Upload an object
 await p0.putObject({
   bucket: "files",
   key: "hello.txt",
   body: "Hello World"
 });
 
+// Retrieve an object
 const file = await p0.getObject("files", "hello.txt");
 console.log(await file.body.text());
 
----
-
+📖 API Reference
 Bucket API
-
-createBucket
-
-await p0.createBucket("my-bucket");
-
-listBuckets
-
-const buckets = await p0.listBuckets();
-
-deleteBucket
-
-await p0.deleteBucket("my-bucket");
-
----
-
+ * createBucket(name): Initializes a new storage container.
+ * listBuckets(): Returns a list of all available buckets.
+ * deleteBucket(name): Permanently removes a bucket and its contents.
 Object API
+ * putObject({ bucket, key, body, metadata }): Stores data; all inputs are automatically normalized to Blobs.
+ * getObject(bucket, key, options): Fetches an object. Pass { password: "..." } for protected items.
+ * headObject(bucket, key): Retrieves metadata without the overhead of the body.
+ * listObjects(bucket, { prefix, limit, offset }): Lists objects with pagination/prefix support.
+ * copyObject({ from, to }): Duplicates objects within or across buckets.
+ * getObjectURL(bucket, key): Generates a temporary URL for browser rendering (e.g., img src).
+🔒 Security Specifications
+P0 utilizes industry-standard security protocols:
+ * Algorithm: AES-GCM 256-bit.
+ * Key Derivation: PBKDF2 with 100,000 iterations.
+ * Packed Format: [salt(16 bytes)] [iv(12 bytes)] [ciphertext].
+⚠️ Limitations
+ * Subject to browser-specific IndexedDB storage quotas.
+ * Not optimized for very large files (>100MB) due to in-memory processing.
+ * Native streaming support is currently not available.
+📜 License
+Licensed under the MIT License.
 
-putObject
-
-await p0.putObject({
-  bucket: "files",
-  key: "image.png",
-  body: fileBlob,
-  metadata: {
-    contentType: "image/png"
-  }
-});
-
----
-
-getObject
-
-const obj = await p0.getObject("files", "image.png");
-
-const blob = obj.body;
-
-Access protected object:
-
-await p0.getObject("files", "secret.txt", {
-  password: "123"
-});
-
----
-
-headObject
-
-Retrieve metadata without body:
-
-const meta = await p0.headObject("files", "image.png");
-
----
-
-deleteObject
-
-await p0.deleteObject("files", "image.png");
-
----
-
-listObjects
-
-const list = await p0.listObjects("files", {
-  prefix: "img/",
-  limit: 50,
-  offset: 0
-});
-
----
-
-copyObject
-
-await p0.copyObject({
-  from: { bucket: "files", key: "a.txt" },
-  to: { bucket: "files", key: "b.txt" }
-});
-
----
-
-Encryption
-
-protectObject
-
-await p0.protectObject({
-  bucket: "files",
-  key: "secret.txt",
-  password: "mypassword"
-});
-
-isProtected
-
-const status = await p0.isProtected("files", "secret.txt");
-
----
-
-Object URL
-
-const url = await p0.getObjectURL("files", "image.png");
-
-img.src = url;
-
----
-
-Error Handling
-
-All errors use the "P0Error" class:
-
-try {
-  await p0.getObject("files", "unknown.txt");
-} catch (e) {
-  if (e instanceof p0.P0Error) {
-    console.log(e.code);
-  }
-}
-
-Error Codes
-
-- "NOT_FOUND"
-- "PASSWORD_REQUIRED"
-- "INVALID_PASSWORD"
-- "BUCKET_NOT_FOUND"
-- "BUCKET_ALREADY_EXISTS"
-- "INVALID_INPUT"
-- "DB_ERROR"
-
----
-
-Supported Body Types
-
-- Blob
-- ArrayBuffer
-- Uint8Array
-- String
-
-All inputs are automatically normalized into Blob internally.
-
----
-
-Storage Schema
-
-Buckets
-
-p0_buckets
-- name (PK)
-- createdAt
-
-Objects
-
-p0_objects
-- _id (bucket::key)
-- bucket
-- key
-- body
-- encryptedBody
-- protected
-- size
-- metadata
-- createdAt
-- updatedAt
-
----
-
-Encryption Details
-
-- AES-GCM 256-bit
-- PBKDF2 (100,000 iterations)
-- Packed format:
-
-[salt(16)] [iv(12)] [ciphertext]
-
----
-
-Use Cases
-
-- Local file manager (like the demo UI)
-- Offline asset cache
-- Secure local vault
-- Progressive Web App storage
-- Local CDN simulation
-
----
-
-Limitations
-
-- Limited by browser IndexedDB quota
-- Not suitable for very large files (100MB+)
-- No streaming support (in-memory processing)
-
----
-
-Roadmap Ideas
-
-- Middleware system
-- Adapter layer (Memory / S3 / R2)
-- Streaming support
-- Multipart uploads
-- Signed URL simulation
-
----
-
-Philosophy
-
-P0 does not aim to replace S3.
-
-It brings the S3 mental model into:
-
-- offline environments
-- local-first architectures
-- client-side applications
-
----
-
-License
-
-MIT
