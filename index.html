@@ -1,0 +1,323 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>PRei Storage (P0)</title>
+
+<!-- Fonts -->
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+
+<!-- Prism -->
+<link href="https://cdn.jsdelivr.net/npm/prismjs/themes/prism-tomorrow.css" rel="stylesheet"/>
+
+<style>
+:root {
+  --bg: #0a0a0a;
+  --card: #121212;
+  --border: #1f1f1f;
+  --text: #ffffff;
+  --muted: #9a9a9a;
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: "DM Sans", sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  line-height: 1.6;
+}
+
+/* NAV */
+.nav {
+  display: flex;
+  justify-content: space-between;
+  padding: 16px;
+  border-bottom: 1px solid var(--border);
+}
+
+.logo {
+  font-weight: 600;
+}
+
+/* SECTION */
+.section {
+  padding: 60px 20px;
+  max-width: 900px;
+  margin: auto;
+  opacity: 0;
+  transform: translateY(30px);
+  transition: all 0.6s ease;
+}
+
+.section.show {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* HERO */
+.hero {
+  text-align: center;
+}
+
+.hero h1 {
+  font-size: 28px;
+  margin-bottom: 10px;
+}
+
+.hero p {
+  color: var(--muted);
+}
+
+/* CARD */
+.card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 16px;
+  margin-top: 20px;
+}
+
+/* CODE */
+pre {
+  border-radius: 10px;
+  overflow: auto;
+  font-size: 13px;
+}
+
+/* FEATURES */
+.feature {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.feature .material-icons {
+  color: var(--muted);
+}
+
+/* FOOTER */
+.footer {
+  text-align: center;
+  color: var(--muted);
+  padding: 40px 20px;
+}
+</style>
+</head>
+
+<body>
+
+<!-- NAV -->
+<div class="nav">
+  <div class="logo">PRei (P0)</div>
+  <div class="material-icons">storage</div>
+</div>
+
+<!-- HERO -->
+<div class="section hero">
+  <h1>S3-like Storage for the Browser</h1>
+  <p>IndexedDB powered. Local-first. Encrypted.</p>
+</div>
+
+<!-- FEATURES -->
+<div class="section">
+  <h2>Features</h2>
+
+  <div class="card">
+    <div class="feature">
+      <span class="material-icons">folder</span>
+      Bucket & Object system
+    </div>
+
+    <div class="feature">
+      <span class="material-icons">lock</span>
+      AES-GCM Encryption
+    </div>
+
+    <div class="feature">
+      <span class="material-icons">offline_bolt</span>
+      Offline-ready storage
+    </div>
+
+    <div class="feature">
+      <span class="material-icons">api</span>
+      S3-like API design
+    </div>
+  </div>
+</div>
+
+<!-- CODE -->
+<div class="section">
+  <h2>Quick Example</h2>
+
+  <div class="card">
+<pre><code class="language-js">
+import { createStorage } from "./prei.js";
+
+const p0 = await createStorage();
+
+await p0.createBucket("files");
+
+await p0.putObject({
+  bucket: "files",
+  key: "hello.txt",
+  body: "Hello World"
+});
+
+const file = await p0.getObject("files", "hello.txt");
+console.log(await file.body.text());
+</code></pre>
+  </div>
+</div>
+
+<!-- API -->
+<div class="section">
+  <h2>API Overview</h2>
+
+  <div class="card">
+<pre><code class="language-js">
+p0.createBucket(name)
+p0.putObject({ bucket, key, body })
+p0.getObject(bucket, key)
+p0.listObjects(bucket)
+p0.deleteObject(bucket, key)
+p0.protectObject({ bucket, key, password })
+</code></pre>
+  </div>
+</div>
+<!-- ENCRYPTION -->
+<div class="section">
+  <h2>Encryption</h2>
+
+  <div class="card">
+    <div class="feature">
+      <span class="material-icons">lock</span>
+      AES-GCM with PBKDF2 key derivation
+    </div>
+
+<pre><code class="language-js">
+await p0.protectObject({
+  bucket: "files",
+  key: "secret.txt",
+  password: "mypassword"
+});
+
+const file = await p0.getObject("files", "secret.txt", {
+  password: "mypassword"
+});
+</code></pre>
+  </div>
+</div>
+
+<!-- DELETE -->
+<div class="section">
+  <h2>Delete</h2>
+
+  <div class="card">
+    <div class="feature">
+      <span class="material-icons">delete</span>
+      Remove objects or entire buckets
+    </div>
+
+<pre><code class="language-js">
+await p0.deleteObject("files", "old.txt");
+
+await p0.deleteBucket("files");
+</code></pre>
+  </div>
+</div>
+
+<!-- UPDATE -->
+<div class="section">
+  <h2>Update (Rename / Replace)</h2>
+
+  <div class="card">
+    <div class="feature">
+      <span class="material-icons">edit</span>
+      Update via copy + overwrite pattern
+    </div>
+
+<pre><code class="language-js">
+// rename
+await p0.copyObject({
+  from: { bucket: "files", key: "a.txt" },
+  to: { bucket: "files", key: "b.txt" }
+});
+
+await p0.deleteObject("files", "a.txt");
+
+// replace content
+await p0.putObject({
+  bucket: "files",
+  key: "b.txt",
+  body: "new content"
+});
+</code></pre>
+  </div>
+</div>
+
+<!-- UNIQUE EXAMPLE -->
+<div class="section">
+  <h2>Unique Example</h2>
+
+  <div class="card">
+    <div class="feature">
+      <span class="material-icons">auto_awesome</span>
+      Local encrypted vault inside the browser
+    </div>
+
+<pre><code class="language-js">
+await p0.createBucket("vault");
+
+await p0.putObject({
+  bucket: "vault",
+  key: "note.txt",
+  body: "Top secret data"
+});
+
+await p0.protectObject({
+  bucket: "vault",
+  key: "note.txt",
+  password: "123"
+});
+
+// later
+const file = await p0.getObject("vault", "note.txt", {
+  password: "123"
+});
+
+console.log(await file.body.text());
+</code></pre>
+  </div>
+</div>
+<!-- FOOTER -->
+<div class="footer">
+  PRei Storage — Experimental Project
+</div>
+
+<!-- Prism -->
+<script src="https://cdn.jsdelivr.net/npm/prismjs/prism.js"></script>
+
+<!-- Animation Script -->
+<script>
+const observer = new IntersectionObserver(entries => {
+  entries.forEach(entry => {
+    if (entry.isIntersecting) {
+      entry.target.classList.add("show");
+    }
+  });
+}, { threshold: 0.1 });
+
+document.querySelectorAll(".section").forEach(el => {
+  observer.observe(el);
+});
+</script>
+
+</body>
+</html>
